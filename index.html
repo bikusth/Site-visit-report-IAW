@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>StruXure — Cabana X Controller</title>
+  <style>
+    /* ── RESET & BASE ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0a; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+    /* ── CSS VARIABLES ────────────────────────────── */
+    :root {
+      --orange: #E8651A;
+      --orange-dim: rgba(232,101,26,0.15);
+      --orange-glow: rgba(232,101,26,0.08);
+      --bg-0: #0a0a0a;
+      --bg-1: #0d0d0d;
+      --bg-2: #161616;
+      --bg-3: #1e1e1e;
+      --border-1: #1e1e1e;
+      --border-2: #2a2a2a;
+      --text-primary: #ffffff;
+      --text-secondary: #aaaaaa;
+      --text-muted: #555555;
+      --text-dim: #333333;
+      --text-dimmer: #2a2a2a;
+    }
+
+    /* ── SCREEN CONTAINER ─────────────────────────── */
+    #app-root {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-1);
+    }
+
+    /* ── SPLASH SCREEN ────────────────────────────── */
+    #splash {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-0);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      transition: opacity 1s ease;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    .splash-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .splash-diamond {
+      width: 10px; height: 10px;
+      background: var(--orange);
+      border-radius: 2px;
+      transform: rotate(45deg);
+    }
+    .splash-title {
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: 6px;
+      color: var(--text-primary);
+    }
+    .splash-subtitle {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+    }
+    .splash-line {
+      margin-top: 48px;
+      width: 1px;
+      height: 36px;
+      background: linear-gradient(to bottom, transparent, var(--orange), transparent);
+    }
+
+    /* ── HOME SCREEN ──────────────────────────────── */
+    #home-screen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-1);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+      z-index: 50;
+    }
+    #home-screen.visible { opacity: 1; pointer-events: all; }
+
+    .home-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .home-diamond {
+      width: 7px; height: 7px;
+      background: var(--orange);
+      border-radius: 1px;
+      transform: rotate(45deg);
+    }
+    .home-brand {
+      font-size: 12px;
+      letter-spacing: 5px;
+      color: var(--text-secondary);
+    }
+    .home-product {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text-dim);
+      margin-bottom: 64px;
+    }
+
+    /* Power button */
+    .power-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      position: relative;
+    }
+    .power-ring-outer {
+      width: 150px; height: 150px;
+      border-radius: 50%;
+      border: 1.5px solid #1e1e1e;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.6s ease;
+    }
+    .power-ring-inner {
+      width: 118px; height: 118px;
+      border-radius: 50%;
+      border: 1px solid #181818;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.6s ease;
+    }
+    .power-btn {
+      width: 84px; height: 84px;
+      border-radius: 50%;
+      background: var(--bg-2);
+      border: 1.5px solid var(--border-2);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background 0.4s ease, border-color 0.4s ease, transform 0.1s ease;
+      -webkit-user-select: none; user-select: none;
+    }
+    .power-btn:active { transform: scale(0.95); }
+    .power-btn.on { background: var(--orange); border-color: var(--orange); }
+    .power-btn svg { transition: all 0.3s ease; }
+
+    .power-status {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text-dim);
+      transition: color 0.4s ease;
+    }
+    .power-status.on { color: var(--orange); }
+    .power-hint {
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--text-dimmer);
+      position: absolute;
+      bottom: -38px;
+      white-space: nowrap;
+    }
+
+    .home-signature {
+      position: absolute;
+      bottom: max(24px, env(safe-area-inset-bottom, 24px));
+      left: 0; right: 0;
+      text-align: center;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--orange);
+      font-style: italic;
+    }
+
+    /* ── MAIN APP ─────────────────────────────────── */
+    #main-app {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-1);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      z-index: 40;
+    }
+    #main-app.visible { opacity: 1; pointer-events: all; }
+
+    /* Header */
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 22px 14px;
+      border-bottom: 0.5px solid var(--border-1);
+      flex-shrink: 0;
+    }
+    .header-diamond {
+      width: 7px; height: 7px;
+      background: var(--orange);
+      border-radius: 1px;
+      transform: rotate(45deg);
+      flex-shrink: 0;
+    }
+    .header-title {
+      flex: 1;
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text-secondary);
+    }
+    .conn-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--orange);
+      box-shadow: 0 0 6px rgba(232,101,26,0.5);
+    }
+
+    /* Tab content area */
+    .tab-content {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    .tab-pane {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 22px 22px 14px;
+      gap: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      overflow-y: auto;
+    }
+    .tab-pane.active { opacity: 1; pointer-events: all; }
+    .tab-section-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      align-self: center;
+    }
+
+    /* ── LOUVRE TAB ───────────────────────────────── */
+    #pane-louvre { justify-content: flex-start; }
+
+    .dial-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 280px;
+      height: 150px;
+      flex-shrink: 0;
+    }
+    #dial-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #dial-canvas:active { cursor: grabbing; }
+    .dial-readout {
+      position: absolute;
+      bottom: 6px;
+      left: 50%; transform: translateX(-50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    .dial-deg {
+      font-size: 32px;
+      font-weight: 500;
+      color: var(--orange);
+      line-height: 1;
+    }
+
+    .degree-labels {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 280px;
+      padding: 0 6px;
+    }
+    .degree-label {
+      text-align: center;
+      flex: 1;
+    }
+    .degree-label .deg { font-size: 10px; color: var(--orange); font-weight: 500; }
+    .degree-label .desc { font-size: 8px; color: #444; margin-top: 2px; }
+
+    .notch-row {
+      display: flex;
+      gap: 3px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .notch {
+      border-radius: 2px;
+      background: var(--border-1);
+      transition: background 0.08s ease;
+      flex-shrink: 0;
+    }
+    .notch.filled { background: var(--orange); }
+
+    .louvre-btns {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 280px;
+      margin-top: auto;
+    }
+
+    /* ── COLOR TAB ────────────────────────────────── */
+    #pane-color { overflow-y: auto; }
+
+    .wheel-wrap {
+      position: relative;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      overflow: hidden;
+      cursor: crosshair;
+      flex-shrink: 0;
+    }
+    #color-wheel-canvas { display: block; width: 100%; height: 100%; }
+    .wheel-cursor {
+      position: absolute;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      top: 50%; left: 50%;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.7);
+      transition: border-color 0.1s;
+    }
+
+    .hex-card {
+      width: 100%;
+      max-width: 320px;
+      background: var(--bg-2);
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 0.5px solid var(--border-1);
+      flex-shrink: 0;
+    }
+    .hex-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .color-swatch {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: #fff;
+      border: 0.5px solid var(--border-2);
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .hex-input-wrap { flex: 1; }
+    .hex-label { font-size: 10px; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 6px; }
+    .hex-field-row { display: flex; align-items: center; gap: 4px; }
+    .hex-hash { font-size: 13px; color: var(--text-muted); font-family: monospace; }
+    #hex-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      color: var(--text-primary);
+      font-weight: 500;
+      width: 90px;
+      font-family: monospace;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    #hex-input::placeholder { color: var(--text-muted); }
+    .hex-error {
+      display: none;
+      margin-top: 8px;
+      font-size: 10px;
+      color: #ff3333;
+      letter-spacing: 1px;
+    }
+    .hex-error.visible { display: block; }
+
+    .brightness-card {
+      width: 100%;
+      max-width: 320px;
+      background: var(--bg-2);
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 0.5px solid var(--border-1);
+      flex-shrink: 0;
+    }
+    .brightness-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .brightness-label { font-size: 10px; letter-spacing: 2px; color: var(--text-muted); }
+    .brightness-val { font-size: 13px; color: var(--orange); font-weight: 500; }
+    .brightness-bar-track {
+      margin-top: 10px;
+      height: 6px;
+      border-radius: 3px;
+      background: #1a1a1a;
+      overflow: hidden;
+    }
+    .brightness-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--orange);
+      transition: width 0.1s;
+    }
+
+    /* ── PRESETS TAB ──────────────────────────────── */
+    #pane-presets {
+      align-items: stretch;
+      overflow-y: auto;
+      gap: 10px;
+    }
+
+    .preset-toast {
+      display: none;
+      background: var(--orange);
+      border-radius: 8px;
+      padding: 9px 14px;
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: #fff;
+      transition: opacity 0.3s;
+      flex-shrink: 0;
+    }
+    .preset-toast.visible { display: block; }
+
+    .presets-list { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+
+    .preset-card {
+      background: var(--bg-2);
+      border-radius: 12px;
+      padding: 14px 16px;
+      border: 0.5px solid var(--border-1);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s ease, transform 0.1s ease;
+      -webkit-user-select: none; user-select: none;
+    }
+    .preset-card:active { transform: scale(0.98); }
+    .preset-card.active { border: 1px solid var(--orange); }
+    .preset-swatch {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: 0.5px solid var(--border-2);
+      flex-shrink: 0;
+    }
+    .preset-info { flex: 1; }
+    .preset-name { font-size: 13px; color: #ddd; font-weight: 500; transition: color 0.2s; }
+    .preset-card.active .preset-name { color: var(--orange); }
+    .preset-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; letter-spacing: 1px; }
+    .preset-active-badge { font-size: 9px; color: var(--orange); letter-spacing: 1px; }
+    .preset-delete { font-size: 18px; color: #333; cursor: pointer; padding: 4px; transition: color 0.2s; }
+    .preset-delete:hover { color: #666; }
+
+    .preset-add-panel {
+      background: var(--bg-2);
+      border-radius: 12px;
+      padding: 16px;
+      border: 0.5px solid var(--orange);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .preset-add-title { font-size: 10px; letter-spacing: 2px; color: var(--orange); }
+    .preset-preview-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-0);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .preset-preview-swatch { width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0; }
+    .preset-preview-meta { font-size: 11px; color: #888; }
+    .preset-name-label { font-size: 10px; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 5px; }
+    #new-preset-input {
+      background: var(--bg-0);
+      border: 0.5px solid var(--border-2);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    #new-preset-input:focus { border-color: var(--orange); }
+    #new-preset-input::placeholder { color: var(--text-muted); }
+    .preset-add-btns { display: flex; gap: 8px; }
+
+    .preset-count {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-align: center;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    /* ── BOTTOM NAV ───────────────────────────────── */
+    .bottom-nav {
+      display: flex;
+      border-top: 0.5px solid #1a1a1a;
+      background: var(--bg-0);
+      flex-shrink: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .nav-item {
+      flex: 1;
+      padding: 12px 4px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      -webkit-user-select: none; user-select: none;
+      transition: opacity 0.1s;
+    }
+    .nav-item:active { opacity: 0.7; }
+    .nav-label { font-size: 8px; letter-spacing: 1.5px; color: var(--text-dim); transition: color 0.2s; }
+    .nav-item.active .nav-label { color: var(--orange); }
+
+    /* ── BUTTONS ──────────────────────────────────── */
+    .btn {
+      flex: 1;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.1s ease, opacity 0.1s ease;
+      -webkit-user-select: none; user-select: none;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--orange); border: none; color: #fff; font-weight: 500; }
+    .btn-secondary { background: var(--bg-2); border: 0.5px solid var(--border-2); color: var(--text-muted); }
+    .btn-outline { background: transparent; border: 0.5px solid var(--orange); color: var(--orange); }
+    .btn-ghost { background: var(--bg-0); border: 0.5px solid var(--border-2); color: var(--text-muted); }
+    .btn-sm { padding: 10px; font-size: 9px; }
+
+    /* ── RANGE SLIDER ─────────────────────────────── */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--bg-3);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--orange);
+      cursor: pointer;
+      border: 2px solid rgba(0,0,0,0.3);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--orange);
+      cursor: pointer;
+      border: 2px solid rgba(0,0,0,0.3);
+    }
+
+    /* ── ANIMATIONS ───────────────────────────────── */
+    @keyframes shake {
+      0%,100%{ transform: translateX(0); }
+      20%{ transform: translateX(-6px); }
+      40%{ transform: translateX(6px); }
+      60%{ transform: translateX(-4px); }
+      80%{ transform: translateX(4px); }
+    }
+    .shake { animation: shake 0.4s ease; }
+  </style>
+</head>
+<body>
+<div id="app-root">
+
+  <!-- ── SPLASH ─────────────────────────────────── -->
+  <div id="splash">
+    <div class="splash-logo">
+      <div class="splash-diamond"></div>
+      <div class="splash-title">STRUXURE</div>
+    </div>
+    <div class="splash-subtitle">CABANA X CONTROLLER</div>
+    <div class="splash-line"></div>
+  </div>
+
+  <!-- ── HOME SCREEN ────────────────────────────── -->
+  <div id="home-screen">
+    <div class="home-logo">
+      <div class="home-diamond"></div>
+      <div class="home-brand">STRUXURE</div>
+    </div>
+    <div class="home-product">CABANA X</div>
+
+    <div class="power-wrap">
+      <div class="power-ring-outer" id="power-ring-outer">
+        <div class="power-ring-inner" id="power-ring-inner">
+          <div class="power-btn" id="power-btn">
+            <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+              <path id="power-arc" d="M11 9.5 A10 10 0 1 0 23 9.5" stroke="#444" stroke-width="2.2" stroke-linecap="round"/>
+              <line id="power-line" x1="17" y1="4" x2="17" y2="15" stroke="#444" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="power-status" id="power-status">OFF</div>
+      <div class="power-hint" id="power-hint">TAP TO TURN ON</div>
+    </div>
+
+    <div class="home-signature">Concept app by Bikrant</div>
+  </div>
+
+  <!-- ── MAIN APP ────────────────────────────────── -->
+  <div id="main-app">
+
+    <!-- Header -->
+    <div class="app-header">
+      <div class="header-diamond"></div>
+      <div class="header-title" id="header-title">LOUVRE CONTROL</div>
+      <div class="conn-dot" id="conn-dot"></div>
+    </div>
+
+    <!-- Tab content -->
+    <div class="tab-content">
+
+      <!-- LOUVRE PANE -->
+      <div class="tab-pane active" id="pane-louvre">
+        <div class="tab-section-label">LOUVRE ANGLE</div>
+        <div class="dial-wrap">
+          <canvas id="dial-canvas"></canvas>
+          <div class="dial-readout">
+            <div class="dial-deg" id="dial-deg">90°</div>
+          </div>
+        </div>
+        <div class="degree-labels">
+          <div class="degree-label"><div class="deg">0°</div><div class="desc">fully closed</div></div>
+          <div class="degree-label"><div class="deg">45°</div><div class="desc">half open</div></div>
+          <div class="degree-label"><div class="deg">90°</div><div class="desc">fully open</div></div>
+        </div>
+        <div class="notch-row" id="notch-row"></div>
+        <div class="louvre-btns">
+          <button class="btn btn-primary" onclick="commitLouvre()">SET</button>
+          <button class="btn btn-secondary" onclick="resetLouvre()">RESET</button>
+        </div>
+      </div>
+
+      <!-- COLOR PANE -->
+      <div class="tab-pane" id="pane-color">
+        <div class="tab-section-label">LIGHTING COLOR</div>
+        <div class="wheel-wrap" id="wheel-wrap">
+          <canvas id="color-wheel-canvas" width="200" height="200"></canvas>
+          <div class="wheel-cursor" id="wheel-cursor"></div>
+        </div>
+        <div class="hex-card">
+          <div class="hex-row">
+            <div class="color-swatch" id="color-swatch"></div>
+            <div class="hex-input-wrap">
+              <div class="hex-label">HEX CODE</div>
+              <div class="hex-field-row">
+                <span class="hex-hash">#</span>
+                <input id="hex-input" type="text" maxlength="6" placeholder="FFFFFF"
+                  oninput="onHexInput(this)"
+                  onkeydown="if(event.key==='Enter') applyHex()"/>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="flex:none;padding:9px 14px;" onclick="applyHex()">APPLY</button>
+          </div>
+          <div class="hex-error" id="hex-error">Invalid hex code</div>
+        </div>
+        <div class="brightness-card">
+          <div class="brightness-header">
+            <div class="brightness-label">BRIGHTNESS</div>
+            <div class="brightness-val" id="brightness-val">100%</div>
+          </div>
+          <input type="range" id="brightness-slider" min="0" max="100" value="100" oninput="onBrightness(this)"/>
+          <div class="brightness-bar-track">
+            <div class="brightness-bar-fill" id="brightness-bar" style="width:100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRESETS PANE -->
+      <div class="tab-pane" id="pane-presets">
+        <div class="tab-section-label" style="align-self:center;">SAVED PRESETS</div>
+        <div class="preset-toast" id="preset-toast"></div>
+        <div class="presets-list" id="presets-list"></div>
+        <button class="btn btn-outline" id="add-preset-btn" onclick="openAddPreset()" style="width:100%;flex-shrink:0;">+ ADD PRESET</button>
+        <div class="preset-count" id="preset-count"></div>
+      </div>
+
+    </div><!-- /tab-content -->
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+      <div class="nav-item active" id="nav-louvre" onclick="switchTab('louvre')">
+        <svg width="22" height="20" viewBox="0 0 24 22" fill="none">
+          <rect x="2" y="2" width="20" height="5" rx="2.5" id="nav-louvre-icon-1" fill="#E8651A"/>
+          <rect x="2" y="9" width="20" height="5" rx="2.5" id="nav-louvre-icon-2" fill="#E8651A"/>
+          <rect x="2" y="16" width="20" height="5" rx="2.5" id="nav-louvre-icon-3" fill="#E8651A"/>
+        </svg>
+        <span class="nav-label" id="nav-louvre-label" style="color:var(--orange);">LOUVRE</span>
+      </div>
+      <div class="nav-item" id="nav-color" onclick="switchTab('color')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="#333" stroke-width="1.5" id="nav-color-circle"/>
+          <path d="M12 3 A9 9 0 0 1 21 12" stroke="#ff6b35" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M21 12 A9 9 0 0 1 12 21" stroke="#4a90e2" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M12 21 A9 9 0 0 1 3 12" stroke="#7ed321" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M3 12 A9 9 0 0 1 12 3" stroke="#b84ab8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span class="nav-label" id="nav-color-label">COLOR</span>
+      </div>
+      <div class="nav-item" id="nav-presets" onclick="switchTab('presets')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="#333" stroke-width="1.5" id="nav-presets-icon-1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="#333" stroke-width="1.5" id="nav-presets-icon-2"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="#333" stroke-width="1.5" id="nav-presets-icon-3"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="#333" stroke-width="1.5" id="nav-presets-icon-4"/>
+        </svg>
+        <span class="nav-label" id="nav-presets-label">PRESETS</span>
+      </div>
+    </nav>
+
+  </div><!-- /main-app -->
+</div><!-- /app-root -->
+
+<script>
+// ── ESP32 CONFIG ─────────────────────────────────────────────
+// Set this to your ESP32's local IP address after setup
+const ESP32_IP = '192.168.1.100';
+const API = `http://${ESP32_IP}`;
+
+async function sendLouvre(angleDeg) {
+  try {
+    await fetch(`${API}/louvre`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ angle: angleDeg })
+    });
+  } catch(e) { console.warn('ESP32 not reachable:', e); }
+}
+
+async function sendColor(hex, brightness) {
+  const r = parseInt(hex.substr(0,2),16);
+  const g = parseInt(hex.substr(2,2),16);
+  const b = parseInt(hex.substr(4,2),16);
+  try {
+    await fetch(`${API}/color`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ r, g, b, brightness })
+    });
+  } catch(e) { console.warn('ESP32 not reachable:', e); }
+}
+
+async function sendOff() {
+  try {
+    await fetch(`${API}/off`, { method: 'POST' });
+  } catch(e) { console.warn('ESP32 not reachable:', e); }
+}
+
+// ── STATE ────────────────────────────────────────────────────
+let isOn = false;
+let dialArc = 180;           // internal 0–180 arc degrees
+let currentColor = 'FFFFFF';
+let currentBrightness = 100;
+let activePresetIndex = -1;
+let addingPreset = false;
+let lastNotch = -1;
+let isDragging = false;
+let audioCtx = null;
+const NOTCH_COUNT = 19;
+
+let presets = [
+  { name: 'Sunset',       angle: 180, color: 'FF6B35' },
+  { name: 'Night Sky',    angle: 0,   color: '4A90E2' },
+  { name: 'Garden Party', angle: 90,  color: '7ED321' }
+];
+
+// ── AUDIO ────────────────────────────────────────────────────
+function getAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+  return audioCtx;
+}
+
+function playTone(freq1, freq2, dur, vol=0.1) {
+  const ctx = getAudio(); if (!ctx) return;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.frequency.setValueAtTime(freq1, ctx.currentTime);
+  if (freq2) o.frequency.exponentialRampToValueAtTime(freq2, ctx.currentTime + dur);
+  g.gain.setValueAtTime(vol, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+  o.start(ctx.currentTime); o.stop(ctx.currentTime + dur + 0.01);
+}
+
+function playClick()    { playTone(1400, 700, 0.04, 0.1); }
+function playPowerOn()  { playTone(400, 900, 0.35, 0.08); }
+function playPowerOff() { playTone(800, 300, 0.45, 0.08); }
+function playPreset()   {
+  [0, 0.09, 0.18].forEach((t, i) => {
+    const ctx = getAudio(); if (!ctx) return;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = [600, 800, 1000][i];
+    g.gain.setValueAtTime(0.07, ctx.currentTime + t);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.09);
+    o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.1);
+  });
+}
+
+function haptic(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern || 8);
+}
+
+// ── SPLASH → HOME ────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const splash = document.getElementById('splash');
+    splash.classList.add('hidden');
+    setTimeout(() => {
+      splash.style.display = 'none';
+      document.getElementById('home-screen').classList.add('visible');
+    }, 1000);
+  }, 1800);
+});
+
+// ── POWER TOGGLE ─────────────────────────────────────────────
+document.getElementById('power-btn').addEventListener('click', () => {
+  getAudio();
+  if (!isOn) {
+    isOn = true;
+    playPowerOn(); haptic([20, 50, 20]);
+    document.getElementById('power-ring-outer').style.borderColor = 'rgba(232,101,26,0.3)';
+    document.getElementById('power-ring-inner').style.borderColor = 'rgba(232,101,26,0.15)';
+    document.getElementById('power-btn').classList.add('on');
+    document.getElementById('power-arc').setAttribute('stroke', '#fff');
+    document.getElementById('power-line').setAttribute('stroke', '#fff');
+    document.getElementById('power-status').textContent = 'ON';
+    document.getElementById('power-status').classList.add('on');
+    document.getElementById('power-hint').textContent = '';
+    setTimeout(() => goToApp(), 900);
+  }
+});
+
+function goToApp() {
+  const home = document.getElementById('home-screen');
+  const app  = document.getElementById('main-app');
+  home.style.opacity = '0';
+  home.style.pointerEvents = 'none';
+  setTimeout(() => {
+    home.classList.remove('visible');
+    home.style.opacity = '';
+    app.classList.add('visible');
+    initDial();
+    drawColorWheel();
+    buildNotchRow();
+    drawDial(dialArc);
+    renderPresets();
+    setupSwipeDown();
+    // Send default ON state to ESP32
+    sendLouvre(90);
+    sendColor('FFFFFF', 100);
+  }, 500);
+}
+
+function goToHome() {
+  isOn = false;
+  playPowerOff(); haptic([30, 60, 30]);
+  const app  = document.getElementById('main-app');
+  const home = document.getElementById('home-screen');
+  app.style.opacity = '0';
+  app.style.pointerEvents = 'none';
+  sendOff();
+  setTimeout(() => {
+    app.classList.remove('visible');
+    app.style.opacity = '';
+    document.getElementById('power-ring-outer').style.borderColor = '';
+    document.getElementById('power-ring-inner').style.borderColor = '';
+    document.getElementById('power-btn').classList.remove('on');
+    document.getElementById('power-arc').setAttribute('stroke', '#444');
+    document.getElementById('power-line').setAttribute('stroke', '#444');
+    document.getElementById('power-status').textContent = 'OFF';
+    document.getElementById('power-status').classList.remove('on');
+    document.getElementById('power-hint').textContent = 'TAP TO TURN ON';
+    home.classList.add('visible');
+  }, 400);
+}
+
+// ── SWIPE DOWN TO GO HOME ─────────────────────────────────────
+function setupSwipeDown() {
+  const app = document.getElementById('main-app');
+  let touchStartY = 0, mouseStartY = 0, mouseHeld = false;
+  app.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, { passive: true });
+  app.addEventListener('touchend',   e => { if (e.changedTouches[0].clientY - touchStartY > 70) goToHome(); }, { passive: true });
+  app.addEventListener('mousedown',  e => { mouseStartY = e.clientY; mouseHeld = true; });
+  app.addEventListener('mouseup',    e => { if (mouseHeld && e.clientY - mouseStartY > 70) goToHome(); mouseHeld = false; });
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────
+const TAB_TITLES = { louvre: 'LOUVRE CONTROL', color: 'LIGHTING COLOR', presets: 'SAVED PRESETS' };
+
+function switchTab(tab) {
+  ['louvre', 'color', 'presets'].forEach(t => {
+    document.getElementById(`pane-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`nav-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`nav-${t}-label`).style.color = t === tab ? 'var(--orange)' : '';
+    // update nav icons
+    if (t === 'louvre') {
+      const c = t === tab ? 'var(--orange)' : '#333';
+      ['1','2','3'].forEach(n => document.getElementById(`nav-louvre-icon-${n}`).setAttribute('fill', c));
+    }
+    if (t === 'presets') {
+      const c = t === tab ? 'var(--orange)' : '#333';
+      ['1','2','3','4'].forEach(n => document.getElementById(`nav-presets-icon-${n}`).setAttribute('stroke', c));
+    }
+    if (t === 'color') {
+      const c = t === tab ? 'var(--orange)' : '#333';
+      document.getElementById('nav-color-circle').setAttribute('stroke', c);
+    }
+  });
+  document.getElementById('header-title').textContent = TAB_TITLES[tab];
+}
+
+// ── DIAL ──────────────────────────────────────────────────────
+let dialCanvas, dialCtx, dialCX, dialCY, dialR;
+
+function initDial() {
+  dialCanvas = document.getElementById('dial-canvas');
+  dialCtx = dialCanvas.getContext('2d');
+  resizeDial();
+  window.addEventListener('resize', resizeDial);
+
+  dialCanvas.addEventListener('mousedown',  onDialStart);
+  window.addEventListener('mousemove',  onDialMove);
+  window.addEventListener('mouseup',    onDialEnd);
+  dialCanvas.addEventListener('touchstart', onDialStart, { passive: false });
+  window.addEventListener('touchmove',  onDialMove,  { passive: false });
+  window.addEventListener('touchend',   onDialEnd);
+}
+
+function resizeDial() {
+  const wrap = dialCanvas.parentElement;
+  dialCanvas.width  = wrap.clientWidth;
+  dialCanvas.height = wrap.clientHeight;
+  dialCX = dialCanvas.width / 2;
+  dialCY = dialCanvas.height * 0.90;
+  dialR  = Math.min(dialCanvas.width * 0.42, dialCanvas.height * 0.80);
+  drawDial(dialArc);
+}
+
+function drawDial(arc) {
+  dialArc = arc;
+  const ctx = dialCtx, cx = dialCX, cy = dialCY, r = dialR;
+  ctx.clearRect(0, 0, dialCanvas.width, dialCanvas.height);
+
+  // track bg
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 2*Math.PI);
+  ctx.lineWidth = 14; ctx.strokeStyle = '#1a1a1a'; ctx.lineCap = 'round'; ctx.stroke();
+
+  // tick marks
+  for (let i = 0; i <= 18; i++) {
+    const a = Math.PI + (i/18)*Math.PI;
+    const inner = r - 7, outer = r + 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + inner*Math.cos(a), cy + inner*Math.sin(a));
+    ctx.lineTo(cx + outer*Math.cos(a), cy + outer*Math.sin(a));
+    ctx.lineWidth = i%9===0 ? 2 : 0.5;
+    ctx.strokeStyle = i%9===0 ? '#333' : '#222';
+    ctx.stroke();
+  }
+
+  // filled arc
+  if (arc > 0) {
+    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + (arc/180)*Math.PI);
+    ctx.lineWidth = 14; ctx.strokeStyle = '#E8651A'; ctx.lineCap = 'round'; ctx.stroke();
+  }
+
+  // knob
+  const ha = Math.PI + (arc/180)*Math.PI;
+  const hx = cx + r*Math.cos(ha), hy = cy + r*Math.sin(ha);
+  ctx.beginPath(); ctx.arc(hx, hy, 13, 0, 2*Math.PI); ctx.fillStyle = '#E8651A'; ctx.fill();
+  ctx.beginPath(); ctx.arc(hx, hy,  5, 0, 2*Math.PI); ctx.fillStyle = '#fff';    ctx.fill();
+
+  // update readout (map 0-180 arc → 0-90 display)
+  const deg = Math.round((arc/180) * 90);
+  document.getElementById('dial-deg').textContent = deg + '°';
+  updateNotches(arc);
+}
+
+function arcFromPointer(e) {
+  const rect = dialCanvas.getBoundingClientRect();
+  const scaleX = dialCanvas.width  / rect.width;
+  const scaleY = dialCanvas.height / rect.height;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const dx = (clientX - rect.left) * scaleX - dialCX;
+  const dy = (clientY - rect.top)  * scaleY - dialCY;
+  let a = Math.atan2(dy, dx) * 180 / Math.PI - 180;
+  if (a < 0) a += 360;
+  if (a > 180) a = a > 270 ? 0 : 180;
+  return Math.max(0, Math.min(180, a));
+}
+
+function onDialStart(e) {
+  isDragging = true; dialCanvas.style.cursor = 'grabbing';
+  getAudio();
+  const a = arcFromPointer(e); checkDialClick(a); drawDial(a);
+  e.preventDefault();
+}
+function onDialMove(e) {
+  if (!isDragging) return;
+  const a = arcFromPointer(e); checkDialClick(a); drawDial(a);
+  e.preventDefault();
+}
+function onDialEnd() { isDragging = false; dialCanvas.style.cursor = 'grab'; }
+
+function checkDialClick(arc) {
+  const n = Math.round(arc / 2);
+  if (n !== lastNotch) { lastNotch = n; playClick(); haptic(5); }
+}
+
+function buildNotchRow() {
+  const row = document.getElementById('notch-row');
+  row.innerHTML = '';
+  for (let i = 0; i < NOTCH_COUNT; i++) {
+    const d = document.createElement('div');
+    d.classList.add('notch');
+    d.id = `notch-${i}`;
+    const h = (i===0||i===NOTCH_COUNT-1) ? 14 : i===9 ? 11 : 8;
+    d.style.cssText = `width:6px;height:${h}px;`;
+    row.appendChild(d);
+  }
+  updateNotches(180);
+}
+
+function updateNotches(arc) {
+  const filled = Math.round((arc/180) * (NOTCH_COUNT-1));
+  for (let i = 0; i < NOTCH_COUNT; i++) {
+    const el = document.getElementById(`notch-${i}`);
+    if (el) el.classList.toggle('filled', i <= filled);
+  }
+}
+
+function commitLouvre() {
+  playClick(); haptic(25);
+  const deg = Math.round((dialArc/180) * 90);
+  sendLouvre(deg);
+  activePresetIndex = -1; renderPresets();
+}
+
+function resetLouvre() {
+  activePresetIndex = -1; renderPresets();
+  if (dialArc === 0) return;
+  const iv = setInterval(() => {
+    const a = dialArc - 4;
+    if (a <= 0) { drawDial(0); clearInterval(iv); sendLouvre(0); return; }
+    playClick(); haptic(4); drawDial(a);
+  }, 30);
+}
+
+// ── COLOR WHEEL ───────────────────────────────────────────────
+function drawColorWheel() {
+  const canvas = document.getElementById('color-wheel-canvas');
+  const ctx = canvas.getContext('2d');
+  const cx = 100, cy = 100, r = 100;
+  for (let a = 0; a < 360; a++) {
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, 'white');
+    grad.addColorStop(1, `hsl(${a},100%,50%)`);
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, (a-1)*Math.PI/180, (a+1)*Math.PI/180);
+    ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+  }
+  moveCursor(100, 100, 0); // white center default
+}
+
+document.getElementById('wheel-wrap').addEventListener('click', e => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  const normX = x / rect.width  * 200;
+  const normY = y / rect.height * 200;
+  const cx = 100, cy = 100, dx = normX-cx, dy = normY-cy;
+  let angle = Math.atan2(dy, dx) * 180/Math.PI;
+  if (angle < 0) angle += 360;
+  const dist = Math.min(Math.sqrt(dx*dx+dy*dy)/100, 1);
+  const rgb = hsl2rgb(angle/360, dist, 1-dist*0.5);
+  const hex = rgb.map(v => Math.round(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+  setColor(hex);
+  moveCursor(normX, normY, dist);
+  activePresetIndex = -1; renderPresets();
+});
+
+function moveCursor(x, y, dist) {
+  const cur = document.getElementById('wheel-cursor');
+  cur.style.left = (x/200*100) + '%';
+  cur.style.top  = (y/200*100) + '%';
+  cur.style.borderColor = dist > 0.5 ? '#fff' : '#333';
+}
+
+function hexToWheelPos(hex) {
+  const r=parseInt(hex.substr(0,2),16)/255, g=parseInt(hex.substr(2,2),16)/255, b=parseInt(hex.substr(4,2),16)/255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), l=(max+min)/2;
+  let h=0, s=0;
+  if (max !== min) {
+    const d=max-min; s=l>0.5?d/(2-max-min):d/(max+min);
+    if(max===r)h=((g-b)/d+(g<b?6:0))/6;
+    else if(max===g)h=((b-r)/d+2)/6;
+    else h=((r-g)/d+4)/6;
+  }
+  return { x: 100+100*s*Math.cos(h*2*Math.PI), y: 100+100*s*Math.sin(h*2*Math.PI), dist: s };
+}
+
+function setColor(hex) {
+  currentColor = hex;
+  document.getElementById('color-swatch').style.background = '#'+hex;
+  document.getElementById('hex-input').value = hex;
+  document.getElementById('hex-input').style.color = '';
+  hideHexError();
+}
+
+function onHexInput(el) {
+  const v = el.value.replace(/[^0-9a-fA-F]/gi,'').toUpperCase();
+  el.value = v; el.style.color = '';
+  hideHexError();
+  if (v.length===6) document.getElementById('color-swatch').style.background = '#'+v;
+}
+
+function applyHex() {
+  const inp = document.getElementById('hex-input');
+  const val = inp.value.toUpperCase().replace(/[^0-9A-F]/g,'');
+  inp.value = val;
+  if (!/^[0-9A-F]{6}$/.test(val)) {
+    inp.style.color = '#ff3333';
+    inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
+    showHexError(); haptic([15,40,15]); return;
+  }
+  setColor(val);
+  const pos = hexToWheelPos(val);
+  moveCursor(pos.x, pos.y, pos.dist);
+  sendColor(val, currentBrightness);
+  haptic(15);
+}
+
+function showHexError() { document.getElementById('hex-error').classList.add('visible'); }
+function hideHexError() { document.getElementById('hex-error').classList.remove('visible'); }
+
+function onBrightness(el) {
+  const v = parseInt(el.value);
+  currentBrightness = v;
+  document.getElementById('brightness-val').textContent = v + '%';
+  document.getElementById('brightness-bar').style.width = v + '%';
+  sendColor(currentColor, v);
+}
+
+// ── PRESETS ───────────────────────────────────────────────────
+function angleLabel(arc) {
+  const d = Math.round((arc/180)*90);
+  return d===0 ? 'CLOSED' : d===90 ? 'OPEN' : d+'°';
+}
+
+function applyPreset(i) {
+  const p = presets[i];
+  activePresetIndex = i;
+  // apply louvre
+  drawDial(p.angle);
+  // apply color
+  setColor(p.color);
+  const pos = hexToWheelPos(p.color);
+  moveCursor(pos.x, pos.y, pos.dist);
+  // send to ESP32
+  sendLouvre(Math.round((p.angle/180)*90));
+  sendColor(p.color, currentBrightness);
+  // feedback
+  playPreset(); haptic([10,30,10,30,10]);
+  showPresetToast(p.name + ' applied');
+  renderPresets();
+}
+
+let toastTimer = null;
+function showPresetToast(msg) {
+  const t = document.getElementById('preset-toast');
+  t.textContent = msg; t.classList.add('visible');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.classList.remove('visible'); }, 2200);
+}
+
+function renderPresets() {
+  const list = document.getElementById('presets-list');
+  list.innerHTML = '';
+
+  presets.forEach((p, i) => {
+    const isActive = activePresetIndex === i;
+    const card = document.createElement('div');
+    card.className = 'preset-card' + (isActive ? ' active' : '');
+    card.innerHTML = `
+      <div class="preset-swatch" style="background:#${p.color};"></div>
+      <div class="preset-info">
+        <div class="preset-name">${p.name}</div>
+        <div class="preset-meta">${angleLabel(p.angle)} · #${p.color}</div>
+      </div>
+      ${isActive ? '<div class="preset-active-badge">ACTIVE</div>' : ''}
+      <div class="preset-delete" onclick="deletePreset(${i},event)">×</div>
+    `;
+    card.addEventListener('click', () => applyPreset(i));
+    list.appendChild(card);
+  });
+
+  if (addingPreset) {
+    const displayDeg = Math.round((dialArc/180)*90);
+    const panel = document.createElement('div');
+    panel.className = 'preset-add-panel';
+    panel.innerHTML = `
+      <div class="preset-add-title">NEW PRESET</div>
+      <div class="preset-preview-row">
+        <div class="preset-preview-swatch" style="background:#${currentColor};"></div>
+        <div class="preset-preview-meta">${displayDeg}° · #${currentColor}</div>
+      </div>
+      <div>
+        <div class="preset-name-label">PRESET NAME</div>
+        <input id="new-preset-input" placeholder="Enter name..." onkeydown="if(event.key==='Enter') savePreset()"/>
+      </div>
+      <div class="preset-add-btns">
+        <button class="btn btn-ghost btn-sm" onclick="cancelAddPreset()">CANCEL</button>
+        <button class="btn btn-primary btn-sm" onclick="savePreset()">SAVE</button>
+      </div>
+    `;
+    list.appendChild(panel);
+    setTimeout(() => { const n = document.getElementById('new-preset-input'); if(n) n.focus(); }, 50);
+  }
+
+  const addBtn = document.getElementById('add-preset-btn');
+  addBtn.style.display = (presets.length >= 5 || addingPreset) ? 'none' : 'block';
+  document.getElementById('preset-count').textContent = presets.length + ' OF 5 PRESETS USED';
+}
+
+function openAddPreset()  { addingPreset = true;  renderPresets(); }
+function cancelAddPreset(){ addingPreset = false; renderPresets(); }
+
+function savePreset() {
+  const inp = document.getElementById('new-preset-input');
+  const name = inp ? inp.value.trim() : '';
+  if (!name) {
+    if (inp) { inp.style.borderColor='#ff3333'; inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); }
+    return;
+  }
+  presets.push({ name, angle: dialArc, color: currentColor });
+  addingPreset = false; renderPresets(); haptic(20);
+}
+
+function deletePreset(i, e) {
+  e.stopPropagation();
+  if (activePresetIndex === i) activePresetIndex = -1;
+  else if (activePresetIndex > i) activePresetIndex--;
+  presets.splice(i, 1); renderPresets();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function hsl2rgb(h, s, l) {
+  if (s===0) return [l*255, l*255, l*255];
+  const q = l<0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+  return [hue(p,q,h+1/3), hue(p,q,h), hue(p,q,h-1/3)].map(v=>v*255);
+}
+function hue(p, q, t) {
+  if(t<0)t+=1; if(t>1)t-=1;
+  if(t<1/6)return p+(q-p)*6*t;
+  if(t<0.5)return q;
+  if(t<2/3)return p+(q-p)*(2/3-t)*6;
+  return p;
+}
+</script>
+</body>
+</html>
